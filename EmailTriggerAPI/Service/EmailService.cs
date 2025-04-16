@@ -3,6 +3,7 @@ using System.Net.Mail;
 using Microsoft.Extensions.Options;
 using EmailTriggerAPI.Models;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 
 namespace EmailTriggerAPI.Service
 {
@@ -12,8 +13,26 @@ namespace EmailTriggerAPI.Service
             private static int smtpPort;
             private static string SenderEmail;
             private static string SenderPassword;
+            private static string ConnectionString;
 
-            public static void SendEmail(string to, string? cc, string? bcc, string? subject, string? body, List<string>? attachments, string? type, Dictionary<string, string>? Datas)
+
+        private readonly IConfiguration _configuration;
+        private readonly AppointmentService _appointmentService;
+
+        public EmailService(IConfiguration configuration, AppointmentService appointmentService)
+        {
+            _configuration = configuration;
+            _appointmentService = appointmentService;
+        }
+public void SendEmail(
+    string to,
+    string? cc,
+    string? bcc,
+    string? subject,
+    string? body,
+    List<string>? attachments,
+    string? type,
+    Dictionary<string, string>? Datas)
             {
                 var configuration = new ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory())
@@ -24,26 +43,46 @@ namespace EmailTriggerAPI.Service
             smtpPort = int.Parse(configuration["EmailSettings:SmtpPort"] ?? throw new Exception("Missing SMTP Port"));
             SenderEmail = configuration["EmailSettings:SenderEmail"] ?? throw new Exception("Missing Sender Email");
             SenderPassword = configuration["EmailSettings:SenderPassword"] ?? throw new Exception("Missing Sender Password");
+            //ConnectionString = configuration.GetConnectionString("DefaultConnection") ?? throw new Exception("Missing DB Connection");
+            
+            //if (type != null)
+            //    {
+            //    //string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Templates", "Appointments.html");
+            //    //string templatePath = configuration.GetValue<string>("MailTemplate:Path").Replace("filePath", type);
+            //    //body = File.Exists(templatePath) ? File.ReadAllText(templatePath) : "Template not found.";
+            //    string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Templates", "Appointments.html");
+            //    body = File.ReadAllText(templatePath);
+            //    //foreach (var pair in Datas)
+            //    //    {
+            //    //        body = body.Replace($"{{{pair.Key}}}", pair.Value);
+            //    //    }
+            //    }
+            //string emailBody = _appointmentService.GetAppointmentEmailBody();
 
-            if (type != null)
-                {
-                //string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Templates", "Appointments.html");
-                //string templatePath = configuration.GetValue<string>("MailTemplate:Path").Replace("filePath", type);
-                //body = File.Exists(templatePath) ? File.ReadAllText(templatePath) : "Template not found.";
+            if (!string.IsNullOrWhiteSpace(type))
+            {
                 string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Templates", "Appointments.html");
-                body = File.ReadAllText(templatePath);
-                //foreach (var pair in Datas)
-                //    {
-                //        body = body.Replace($"{{{pair.Key}}}", pair.Value);
-                //    }
+                body = File.Exists(templatePath) ? File.ReadAllText(templatePath) : "Template not found.";
+
+                if (Datas != null)
+                {
+                    foreach (var pair in Datas)
+                    {
+                        body = body.Replace($"{{{pair.Key}}}", pair.Value);
+                    }
                 }
-                using (SmtpClient client = new SmtpClient(SmtpServer, smtpPort))
+            }
+            //else
+            //{
+            //    body = _appointmentService.GetAppointmentEmailBody();
+            //}
+            using (SmtpClient client = new SmtpClient(SmtpServer, smtpPort))
                 {
                     client.EnableSsl = true;
                     client.Credentials = new NetworkCredential(SenderEmail, SenderPassword);
                     using (MailMessage mail = new MailMessage())
                     {
-                        mail.From = new MailAddress(SenderEmail, configuration["MailSettings:SmtpEmailDisplayName"]);
+                        mail.From = new MailAddress(SenderEmail, configuration["EmailSettings:SenderEmail"]);
                         AddMailAddresses(mail.To, to);
                         if (!string.IsNullOrEmpty(cc))
                         {

@@ -7,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<AppointmentService>();
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
